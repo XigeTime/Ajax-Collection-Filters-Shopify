@@ -64,12 +64,12 @@
                         {% if _prefix_group contains catItem %}
 
                             <span class="sb-filter {{ cat_item | downcase }}" id="filter-{{ i }}">
-                                <span for="filter-by" class="cf-title">{{ cat_item }}</span>
+                                <span for="filter-by-{{ catItem }}" class="cf-title">{{ cat_item }}</span>
 
                                 {% capture ci %}{{ catItem | downcase }}{% endcapture %}
                                 {% assign tag_count = 0 %}
 
-                                <select id="filter-by" class="sb-select wide advanced-filters" data-group="{{ catItem }}">
+                                <select id="filter-by-{{ catItem }}" class="sb-select wide advanced-filters" data-group="{{ catItem }}">
                                     <option selected value="">All {{ cat_item }}s</option>
 
                                     {% for custom_tag in collection.all_tags %}
