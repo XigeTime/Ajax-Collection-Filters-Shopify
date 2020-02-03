@@ -1,0 +1,237 @@
+{% if collection.all_tags.size > 0 and section.settings.filter_type != 'none' %}
+    {% if section.settings.filter_type == 'groups' %}
+
+        {% assign _prefix_group = section.settings.group_filter_prefix | split: ',' %}
+        {% assign _count = 0 %}
+
+        {% for prefix in _prefix_group %}
+            {% assign my_prefix = prefix | downcase | lstrip | append: ':+++' %}
+            {% assign _prefix_new_str = _prefix_new_str | append: my_prefix  %}
+        {% endfor %}
+
+        {% assign _prefix_group = _prefix_new_str | split: ':+++' %}
+
+        {% if template contains 'collection' and collection.all_tags.size > 0 %}
+            {% assign c = 0 %}
+            {% for t in collection.all_tags %}
+                {% capture cat %}
+                    {{ cat }}
+
+                    {% capture temp_cat %}
+                        {% if t contains ':' %}
+                            {% assign cat_grp = t | split: ':' %}
+                            {{ cat_grp.first }}
+                        {% endif %}
+                    {% endcapture %}
+
+                    {% unless cat contains temp_cat %}
+                        {% if t contains ':' %}
+                            {% assign new_cat_grp = t | split: ':' %}
+                            {{ new_cat_grp.first }}
+                        {% endif %}
+
+                        {% unless forloop.last %}+{% endunless %}
+
+                    {% assign c = c | plus: 1 %}
+                    {% endunless %}
+                {% endcapture %}
+            {% endfor %}
+
+            {% assign cat_array = cat | split: '+' %}
+        {% endif %}
+
+        <span class="sbw-filter">
+            <span class="filter__widget">
+                {% assign i = 0 %}
+
+                {% assign cat_arr_unique = "" %}
+                {% for cat in cat_array %}
+                    {% assign c = cat | strip | append: "-" %}
+                    {% assign cat_arr_unique = cat_arr_unique | append: c %}
+                {% endfor %}
+
+                {% assign cat_arr_unique = cat_arr_unique | split: "-" %}
+                {% assign cat_arr_unique = cat_arr_unique | uniq %}
+
+                {% for cat_item in cat_arr_unique %}
+                    {% assign i = i | plus: 1 %}
+                    {% assign cat_item_plus = cat_item | downcase %}
+
+                    {% unless cat_item == '' %}
+
+                    {% assign catItem = cat_item_plus | strip %}
+
+                        {% if _prefix_group contains catItem %}
+
+                            <span class="sb-filter {{ cat_item | downcase }}" id="filter-{{ i }}">
+                                <span for="filter-by" class="cf-title">{{ cat_item }}</span>
+
+                                {% capture ci %}{{ catItem | downcase }}{% endcapture %}
+                                {% assign tag_count = 0 %}
+
+                                <select id="filter-by" class="sb-select wide advanced-filters" data-group="{{ catItem }}">
+                                    <option selected value="">All {{ cat_item }}s</option>
+
+                                    {% for custom_tag in collection.all_tags %}
+                                        {% assign c_tag = custom_tag | downcase %}
+
+                                        {% if c_tag contains catItem %}
+
+                                            {% unless c_tag contains "cf-" %}
+
+                                                {% assign value = custom_tag | remove_first: catItem | remove: ':' %}
+                                                {% if current_tags contains custom_tag %}
+                                                    {% if ci == 'color' %}
+                                                        <option selected value="{{ catItem }}:{{ custom_tag | handleize }}">{{ custom_tag | remove_first: cat_item | remove: ':' | link_to_remove_tag: custom_tag | replace: 'tag Color:', '' }}</option>
+                                                        {% assign tag_count = tag_count | plus: 1 %}
+                                                    {% else %}
+                                                        <option selected value="{{ catItem }}:{{ custom_tag | handleize }}">{{ custom_tag | remove_first: cat_item | remove: ':' | link_to_remove_tag: custom_tag }}</option>
+                                                        {% assign tag_count = tag_count | plus: 1 %}
+                                                    {% endif %}
+                                                {% else %}
+                                                    {% if ci == 'color' %}
+                                                        <option value="{{ catItem }}:{{ custom_tag | handleize }}">
+                                                            {{ custom_tag | remove_first: cat_item | remove: ':' | link_to_add_tag: custom_tag | replace: 'Narrow selection to products matching tag Color:', '' }}
+                                                        </option>
+                                                        {% assign tag_count = tag_count | plus: 1 %}
+                                                    {% else %}
+                                                        <option value="{{ catItem }}:{{ custom_tag | handleize }}">
+                                                            {{ custom_tag | remove_first: cat_item | remove: ':' | link_to_add_tag: custom_tag }}
+                                                        </option>
+                                                        {% assign tag_count = tag_count | plus: 1 %}
+                                                    {% endif %}
+                                                {% endif %}
+
+                                            {% endunless %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+
+                                {% if tag_count < 2 %}<style>#filter-{{ i }} {display:none}</style>{% endif %}
+                            </span>
+                        {% endif %}
+                    {% endunless %}
+                {% endfor %}
+            </span>
+        </span>
+        {% comment %} -- filter by tag -- {% endcomment %}
+    {% else %}
+        <span class="sb-tag cf-options-container">
+            <span for="filter-by" class="cf-title">Filter</span>
+
+            <select id="filter-by" class="sb-select wide advanced-filters">
+                {% unless current_tags %}
+                    <option value="" selected>All items</option>
+                {% else %}
+                    {% if collection.handle %}
+                        {% capture collection_url %}/collections/{{ collection.handle }}{% unless collection.sort_by == blank %}?sort_by={{ collection.sort_by }}{% endunless %}{% endcapture %}
+                    {% endif %}
+
+                    <option value="{{ collection_url }}">All items</option>
+                {% endunless %}
+
+                {% for tag in collection.all_tags %}
+                    {% if current_tags contains tag %}
+                        <option value="{{ tag }}" selected>{{ tag }}</option>
+                    {% else %}
+                        <option value="/collections/{% if collection.handle.size > 0 %}{{ collection.handle }}{% else %}all{% endif %}/{{ tag | handle }}">{{ tag }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </span>
+    {% endif %}
+{% endif %}
+
+<script async defer>
+    $(document).ready(function () {
+        window.current_filters = [{% for tag in current_tags %}"{{ tag }}"{% unless forloop.last %},{% endunless %}{% endfor %}];
+        let col_url = window.location.origin + '/collections/' + '{{ collection.handle }}';
+
+        // set active state on the currently selected filters
+        window.current_filters.forEach(function (filter) {
+            filter = filter.replace('-', ':');
+            let filterElement = $('option[value="' + filter + '"]');
+            if (filterElement.length > 0) filterElement.prop('selected', true);
+        });
+
+        $('body').on('change', '.advanced-filters', function () {
+            let current_params_without_group;
+            let group = this.value.split(':')[0];
+            let value = this.value.split(':')[1];
+            let lgroup = group.toLowerCase();
+            let current_params = window.location.href.replace(col_url, "").replace("/", "").split('+');
+
+            // find the currently active filter for this group
+            let matching_group_filter = window.current_filters.filter(function (filter) {
+                return filter.toLowerCase().indexOf(lgroup) > -1;
+            });
+
+            // remove any empty fields in the param array
+            current_params = current_params.filter(function (filter) {
+                return filter !== '';
+            });
+
+            // if there is already a filter from this group, remove it ready for setting the new one
+            if (matching_group_filter.length > 0) {
+                matching_group_filter = matching_group_filter[0].toLowerCase().replace(lgroup + ':','').replace(/ /g, '-');
+                current_params_without_group = current_params.filter(function (filter) {
+                    return filter.indexOf(matching_group_filter) === -1;
+                })
+            } else {
+                current_params_without_group = current_params;
+            }
+
+            // add the new filter to our list of current filters
+            current_params_without_group.push(value);
+
+            // load the new url using the current filters to build the parameters
+            window.location.href = col_url + '/' + (current_params_without_group.length > 1 ? current_params_without_group.join('+') : current_params_without_group[0]);
+        });
+    });
+</script>
+
+{% schema %}
+    {
+        "name": "Collection filters",
+        "settings": [
+            {
+                "type": "checkbox",
+                "id": "tags_enable",
+                "label": "Enable tag filtering",
+                "default": true
+            },
+            {
+                "type": "header",
+                "content": "Filter",
+                "info": "To setup Filter by Groups like our demo, please add product's tag to format 'Group':'Value'. For example: Color:Black, Brand:Elle"
+            },
+            {
+                "type": "radio",
+                "id": "filter_type",
+                "label": "Filter type",
+                "options": [
+                    {
+                        "value": "tags",
+                        "label": "Filter by Tags"
+                    },
+                    {
+                        "value": "groups",
+                        "label": "Filter by Groups"
+                    },
+                    {
+                        "value": "none",
+                        "label": "None"
+                    }
+                ],
+                "default": "groups"
+            },
+            {
+                "type": "text",
+                "id": "group_filter_prefix",
+                "label": "Group use in filter",
+                "default": "brand,color,price,size",
+                "info": "Enter your tag's prefix,separate by comma ie: color,size,brand,price.."
+            }
+        ]
+    }
+{% endschema %}
