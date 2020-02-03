@@ -185,10 +185,17 @@
             current_params_without_group.push(value);
 
             // load the new url using the current filters to build the parameters
+            window.location.href = col_url + '/' + (current_params_without_group.length > 1 ? current_params_without_group.join('+') : current_params_without_group[0]);
+
+            // load the new url using the current filters to build the parameters
             let fetch_url = col_url + '/' + (current_params_without_group.length > 1 ? current_params_without_group.join('+') : current_params_without_group[0]);
 
             let ajaxify = "{{ section.settings.should_ajaxify }}";
             if (ajaxify === "true" && typeof AjaxifyFilters === 'object') {
+                window.current_filters = window.current_filters.filter(function (filter) {
+                    return filter.toLowerCase().indexOf(group) === -1;
+                });
+                window.current_filters.push(this.value);
                 AjaxifyFilters.fetchProducts(fetch_url);
             } else {
                 window.location.href = fetch_url;
@@ -196,12 +203,11 @@
         });
 
         let AjaxifyFilters = {
-            productSelector: {{ section.settings.product_container_selector }},
-            paginationSelector: {{ section.settings.pagination_container_selector }},
+            productSelector: "{{ section.settings.product_container_selector }}",
+            paginationSelector: "{{ section.settings.pagination_container_selector }}",
 
             fetchProducts: function (url) {
                 this.fetch(this.productSelector, url);
-
                 // check if the page needs pagination, if so get that too!
                 if ($(this.paginationSelector).length > 0) this.fetch(this.paginationSelector, url);
             },
@@ -210,7 +216,8 @@
                 $(selector).children().animate({ opacity: .3 });
                 $(selector).parent().load(url + ' ' + selector, function(r, status) {
                     // if there is an error, fallback to sending them to the page
-                    if (status == "error") window.location.href = url;
+                    if (status == "error") return window.location.href = url;
+                    history.replaceState(null, null, url.replace(window.location.origin, ""));
                 });
             },
         };
