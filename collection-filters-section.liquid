@@ -79,7 +79,7 @@
 
                                             {% unless c_tag contains "cf-" %}
 
-                                                {% assign value = custom_tag | remove_first: catItem | remove: ':' %}
+                                            {% assign value = custom_tag | remove_first: catItem | remove: ':' %}
                                                 {% if current_tags contains custom_tag %}
                                                     {% if ci == 'color' %}
                                                         <option selected value="{{ catItem }}:{{ custom_tag | handleize }}">{{ custom_tag | remove_first: cat_item | remove: ':' | link_to_remove_tag: custom_tag | replace: 'tag Color:', '' }}</option>
@@ -124,8 +124,8 @@
                     <option value="" selected>All items</option>
                 {% else %}
                     {% if collection.handle %}
-                        {% capture collection_url %}/collections/{{ collection.handle }}{% unless collection.sort_by == blank %}?sort_by={{ collection.sort_by }}{% endunless %}{% endcapture %}
-                    {% endif %}
+                    {% capture collection_url %}/collections/{{ collection.handle }}{% unless collection.sort_by == blank %}?sort_by={{ collection.sort_by }}{% endunless %}{% endcapture %}
+                {% endif %}
 
                     <option value="{{ collection_url }}">All items</option>
                 {% endunless %}
@@ -185,8 +185,35 @@
             current_params_without_group.push(value);
 
             // load the new url using the current filters to build the parameters
-            window.location.href = col_url + '/' + (current_params_without_group.length > 1 ? current_params_without_group.join('+') : current_params_without_group[0]);
+            let fetch_url = col_url + '/' + (current_params_without_group.length > 1 ? current_params_without_group.join('+') : current_params_without_group[0]);
+
+            let ajaxify = "{{ section.settings.should_ajaxify }}";
+            if (ajaxify === "true" && typeof AjaxifyFilters === 'object') {
+                AjaxifyFilters.fetchProducts(fetch_url);
+            } else {
+                window.location.href = fetch_url;
+            }
         });
+
+        let AjaxifyFilters = {
+            productSelector: {{ section.settings.product_container_selector }},
+            paginationSelector: {{ section.settings.pagination_container_selector }},
+
+            fetchProducts: function (url) {
+                this.fetch(this.productSelector, url);
+
+                // check if the page needs pagination, if so get that too!
+                if ($(this.paginationSelector).length > 0) this.fetch(this.paginationSelector, url);
+            },
+
+            fetch: function (selector, url) {
+                $(selector).children().animate({ opacity: .3 });
+                $(selector).parent().load(url + ' ' + selector, function(r, status) {
+                    // if there is an error, fallback to sending them to the page
+                    if (status == "error") window.location.href = url;
+                });
+            },
+        };
     });
 </script>
 
@@ -231,6 +258,31 @@
                 "label": "Group use in filter",
                 "default": "brand,color,price,size",
                 "info": "Enter your tag's prefix,separate by comma ie: color,size,brand,price.."
+            },
+            {
+                "type": "header",
+                "content": "Ajaxify Filters",
+                "info": "Enable ajax on your filters so that customers can browse without the page having to refresh."
+            },
+            {
+                "type": "checkbox",
+                "id": "should_ajaxify",
+                "label": "Enable Ajaxify?",
+                "default": "false"
+            },
+            {
+                "type": "text",
+                "placeholder": ".ajaxify-products",
+                "label": "Product container class or id",
+                "info": "Please include the prefix e.g: .class or #id",
+                "id": "product_container_selector"
+            },
+            {
+                "type": "text",
+                "placeholder": ".ajaxify-products",
+                "label": "Pagination container class or id",
+                "info": "Please include the prefix e.g: .class or #id",
+                "id": "pagination_container_selector"
             }
         ]
     }
